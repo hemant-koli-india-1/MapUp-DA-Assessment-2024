@@ -1,29 +1,23 @@
 from typing import Dict, List
-
 import pandas as pd
-
+import re
+import polyline
+from haversine import haversine
 
 def reverse_by_n_elements(lst: List[int], n: int) -> List[int]:
     result = []
     length = len(lst)
     for i in range(0, length, n):
-       
         group = []
-        
         for j in range(min(n, length - i)):
             group.append(lst[i + j])
-        
-        
         for k in range(len(group) - 1, -1, -1):
             result.append(group[k])
-    
     return result
-    return lst
-
 
 def group_by_length(lst: List[str]) -> Dict[int, List[str]]:
     hmap = {}
-    for i in arr:
+    for i in lst:
         x = len(i)
         if x in hmap:
             hmap[x].append(i)
@@ -31,10 +25,10 @@ def group_by_length(lst: List[str]) -> Dict[int, List[str]]:
             hmap[x] = [i]
     sorted_hmap = dict(sorted(hmap.items()))
     return sorted_hmap
-    
-def flatten_dict(nested_dict: Dict, sep: str = '.') -> Dict:
-   items = []
-    for k, v in d.items():
+
+def flatten_dict(nested_dict: Dict, parent_key: str = '', sep: str = '.') -> Dict:
+    items = []
+    for k, v in nested_dict.items():
         new_key = f"{parent_key}{sep}{k}" if parent_key else k
         if isinstance(v, dict):
             items.extend(flatten_dict(v, new_key, sep=sep).items())
@@ -44,8 +38,6 @@ def flatten_dict(nested_dict: Dict, sep: str = '.') -> Dict:
         else:
             items.append((new_key, v))
     return dict(items)
-
-from typing import List
 
 def unique_permutations(nums: List[int]) -> List[List[int]]:
     def backtrack(start):
@@ -65,29 +57,24 @@ def unique_permutations(nums: List[int]) -> List[List[int]]:
     backtrack(0)
     return result
 
-import re
 def find_all_dates(text: str) -> List[str]:
-   date_patterns = r'\b(\d{2})-(\d{2})-(\d{4})\b|\b(\d{2})/(\d{2})/(\d{4})\b|\b(\d{4})\.(\d{2})\.(\d{2})\b'
+    date_patterns = r'\b(\d{2})-(\d{2})-(\d{4})\b|\b(\d{2})/(\d{2})/(\d{4})\b|\b(\d{4})\.(\d{2})\.(\d{2})\b'
     matches = re.findall(date_patterns, text)
     
     valid_dates = []
     for match in matches:
-        if match[0]:  
+        if match[0]:
             valid_dates.append(f"{match[0]}-{match[1]}-{match[2]}")
-        elif match[3]:  
+        elif match[3]:
             valid_dates.append(f"{match[3]}/{match[4]}/{match[5]}")
-        elif match[6]:  
+        elif match[6]:
             valid_dates.append(f"{match[6]}.{match[7]}.{match[8]}")
 
     return valid_dates
-import pandas as pd
-import polyline
-from haversine import haversine
 
 def polyline_to_dataframe(polyline_str: str) -> pd.DataFrame:
     try:
         coordinates = polyline.decode(polyline_str)
-        
         if not coordinates:
             raise ValueError("Decoded coordinates list is empty.")
         
@@ -107,12 +94,10 @@ def polyline_to_dataframe(polyline_str: str) -> pd.DataFrame:
         print(f"Error decoding polyline: {e}")
         return pd.DataFrame(columns=['latitude', 'longitude', 'distance'])
 
-polyline_str = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"
-df = polyline_to_dataframe(polyline_str)
-print(df)
-
 def rotate_and_multiply_matrix(matrix: List[List[int]]) -> List[List[int]]:
     n = len(matrix)
+    if n == 0 or len(matrix[0]) != n:
+        raise ValueError("Input must be a square matrix")
     
     for i in range(n):
         for j in range(i + 1, n):
@@ -129,45 +114,44 @@ def rotate_and_multiply_matrix(matrix: List[List[int]]) -> List[List[int]]:
 
     return transformed_matrix
 
-import pandas as pd
-import numpy as np
-
-def time_check(df) -> pd.Series:
+def time_check(df: pd.DataFrame) -> pd.Series:
     day_name_to_num = {
         'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3, 
         'Friday': 4, 'Saturday': 5, 'Sunday': 6
     }
     
-    df['startDay'] = df['startDay'].map(day_name_to_num)
-    df['endDay'] = df['endDay'].map(day_name_to_num)
+    if 'startDay' in df.columns and 'endDay' in df.columns:
+        df['startDay'] = df['startDay'].map(day_name_to_num)
+        df['endDay'] = df['endDay'].map(day_name_to_num)
 
-    df['startTime'] = pd.to_datetime(df['startTime'], format='%H:%M:%S').dt.time
-    df['endTime'] = pd.to_datetime(df['endTime'], format='%H:%M:%S').dt.time
-    
-    expected_days = set(range(7))
-    full_day_time_range = pd.date_range("00:00:00", "23:59:59", freq="1s").time
-
-    grouped = df.groupby(['id', 'id_2'])
-    
-    def is_incomplete(group):
-        days_covered = set(group['startDay']).union(set(group['endDay']))
-        if days_covered != expected_days:
-            return True
+        df['startTime'] = pd.to_datetime(df['startTime'], format='%H:%M:%S').dt.time
+        df['endTime'] = pd.to_datetime(df['endTime'], format='%H:%M:%S').dt.time
         
-        for day in expected_days:
-            times_for_day = group[(group['startDay'] == day) | (group['endDay'] == day)]
-            if times_for_day.empty:
-                return True
-            time_covered = set()
-            for _, row in times_for_day.iterrows():
-                start_time = pd.Timestamp.combine(pd.Timestamp.today(), row['startTime'])
-                end_time = pd.Timestamp.combine(pd.Timestamp.today(), row['endTime'])
-                time_covered.update(pd.date_range(start_time, end_time, freq='1s').time)
-            if set(full_day_time_range) != time_covered:
-                return True
+        expected_days = set(range(7))
+        full_day_time_range = pd.date_range("00:00:00", "23:59:59", freq="1s").time
+
+        grouped = df.groupby(['id', 'id_2'])
         
-        return False
+        def is_incomplete(group):
+            days_covered = set(group['startDay']).union(set(group['endDay']))
+            if days_covered != expected_days:
+                return True
+            
+            for day in expected_days:
+                times_for_day = group[(group['startDay'] == day) | (group['endDay'] == day)]
+                if times_for_day.empty:
+                    return True
+                time_covered = set()
+                for _, row in times_for_day.iterrows():
+                    start_time = pd.Timestamp.combine(pd.Timestamp.today(), row['startTime'])
+                    end_time = pd.Timestamp.combine(pd.Timestamp.today(), row['endTime'])
+                    time_covered.update(pd.date_range(start_time, end_time, freq='1s').time)
+                if set(full_day_time_range) != time_covered:
+                    return True
+            
+            return False
 
-    result = grouped.apply(is_incomplete)
-    return result
-
+        result = grouped.apply(is_incomplete)
+        return result
+    
+    raise ValueError("DataFrame must contain 'startDay' and 'endDay' columns.")
